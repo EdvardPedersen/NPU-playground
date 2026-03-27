@@ -21,8 +21,10 @@ int main(int argc, const char *argv[]) {
   xrt::hw_context context(device, xclbin.get_uuid());
   auto kernel = xrt::kernel(context, "MLIR_AIE");
 
-  unsigned int opcode = 3;
-  //auto run = kernel();
-  //run.wait();
+  auto bank_1 = kernel.group_id(1);
+  auto output_buffer = xrt::bo(device, 256*sizeof(float),xrt::bo::flags::device_only ,  bank_1);
+
+  auto run = kernel(output_buffer);
+  run.wait();
 
 }
