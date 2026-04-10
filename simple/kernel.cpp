@@ -8,7 +8,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// #define __AIENGINE__ 1
 #define NOCPP
 
 #include <stdint.h>
@@ -21,7 +20,7 @@ void passThroughLine(int32_t *in, int32_t *out, int32_t lineWidth) {
     int32_t *inPtr = in;
     int32_t *outPtr = out;
     for(int i = 0; i < lineWidth; i++) {
-        *outPtr++ = 10;
+        *outPtr++ = *inPtr++;
     }
 }
 } // extern "C"
