@@ -25,7 +25,7 @@
 #include "xrt/experimental/xrt_ext.h"
 #include "xrt/experimental/xrt_module.h"
 
-#define N 16384
+#define N 128*128
 
 int main(int argc, const char *argv[]) {
   // Start the XRT test code
@@ -65,7 +65,8 @@ int main(int argc, const char *argv[]) {
   int errors = 0;
 
   for (uint32_t i = 0; i < N; i++) {
-    uint32_t ref = (i + 1);
+    uint32_t ref = i;
+    std::cout << bufOut[i] << " - " << ref << std::endl;
     if (*(bufOut + i) != ref) {
       errors++;
     }

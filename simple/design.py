@@ -17,7 +17,7 @@ def my_memcpy(dev, size, num_columns, num_channels, bypass):
     xfr_dtype = np.int32
 
     # Define tensor types
-    line_size = 1024
+    line_size = int(size / 16)
     line_type = np.ndarray[(line_size,), np.dtype[xfr_dtype]]
     transfer_type = np.ndarray[(size,), np.dtype[xfr_dtype]]
 
@@ -33,9 +33,6 @@ def my_memcpy(dev, size, num_columns, num_channels, bypass):
         for i in range(num_columns)
         for j in range(num_channels)
     ]
-    # Bypass path is a special case where we don't need to create a Worker
-    # and we can use the ObjectFifo directly to read and write the data with
-    # a `forward` through a MemTile.
     of_outs = [
         ObjectFifo(line_type, name=f"out{i}_{j}")
         for i in range(num_columns)
@@ -50,14 +47,14 @@ def my_memcpy(dev, size, num_columns, num_channels, bypass):
     passthrough_fn = Kernel(
         "passThroughLine",
         "kernel.o",
-        [line_type, line_type, np.int32],
+        [line_type, line_type, np.int32, np.int32],
     )
 
     # Task for the core to perform
-    def core_fn(of_in, of_out, passThroughLine):
+    def core_fn(of_in, of_out, passThroughLine, node):
         elemOut = of_out.acquire(1)
         elemIn = of_in.acquire(1)
-        passThroughLine(elemIn, elemOut, line_size)
+        passThroughLine(elemIn, elemOut, line_size, node)
         of_in.release(1)
         of_out.release(1)
 
@@ -69,6 +66,7 @@ def my_memcpy(dev, size, num_columns, num_channels, bypass):
                 of_ins[i * num_channels + j].cons(),
                 of_outs[i * num_channels + j].prod(),
                 passthrough_fn,
+                i * num_channels + j,
             ],
         )
         for i in range(num_columns)
@@ -123,4 +121,4 @@ def my_memcpy(dev, size, num_columns, num_channels, bypass):
 
 ## Call the my_memcpy function with the parsed arguments
 ## and print the MLIR as a result
-print(my_memcpy(NPU2(), 16384, 8, 2, False))
+print(my_memcpy(NPU2(), 128*128 , 8, 2, False))

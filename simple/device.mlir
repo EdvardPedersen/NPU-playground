@@ -56,7 +56,7 @@ module {
     aie.objectfifo @out6_1(%tile_3_3, {%shim_noc_tile_6_0}, 2 : i32) : !aie.objectfifo<memref<1024xi32>> 
     aie.objectfifo @out7_0(%tile_3_4, {%shim_noc_tile_7_0}, 2 : i32) : !aie.objectfifo<memref<1024xi32>> 
     aie.objectfifo @out7_1(%tile_3_5, {%shim_noc_tile_7_0}, 2 : i32) : !aie.objectfifo<memref<1024xi32>> 
-    func.func private @passThroughLine(memref<1024xi32>, memref<1024xi32>, i32) attributes {link_with = "kernel.o"}
+    func.func private @passThroughLine(memref<1024xi32>, memref<1024xi32>, i32, i32) attributes {link_with = "kernel.o"}
     %core_0_2 = aie.core(%tile_0_2) {
       %c0 = arith.constant 0 : index
       %c9223372036854775807 = arith.constant 9223372036854775807 : index
@@ -67,7 +67,8 @@ module {
         %2 = aie.objectfifo.acquire @in0_0(Consume, 1) : !aie.objectfifosubview<memref<1024xi32>>
         %3 = aie.objectfifo.subview.access %2[0] : !aie.objectfifosubview<memref<1024xi32>> -> memref<1024xi32>
         %c1024_i32 = arith.constant 1024 : i32
-        func.call @passThroughLine(%3, %1, %c1024_i32) : (memref<1024xi32>, memref<1024xi32>, i32) -> ()
+        %c0_i32 = arith.constant 0 : i32
+        func.call @passThroughLine(%3, %1, %c1024_i32, %c0_i32) : (memref<1024xi32>, memref<1024xi32>, i32, i32) -> ()
         aie.objectfifo.release @in0_0(Consume, 1)
         aie.objectfifo.release @out0_0(Produce, 1)
       }
@@ -83,7 +84,8 @@ module {
         %2 = aie.objectfifo.acquire @in0_1(Consume, 1) : !aie.objectfifosubview<memref<1024xi32>>
         %3 = aie.objectfifo.subview.access %2[0] : !aie.objectfifosubview<memref<1024xi32>> -> memref<1024xi32>
         %c1024_i32 = arith.constant 1024 : i32
-        func.call @passThroughLine(%3, %1, %c1024_i32) : (memref<1024xi32>, memref<1024xi32>, i32) -> ()
+        %c1_i32 = arith.constant 1 : i32
+        func.call @passThroughLine(%3, %1, %c1024_i32, %c1_i32) : (memref<1024xi32>, memref<1024xi32>, i32, i32) -> ()
         aie.objectfifo.release @in0_1(Consume, 1)
         aie.objectfifo.release @out0_1(Produce, 1)
       }
@@ -99,7 +101,8 @@ module {
         %2 = aie.objectfifo.acquire @in1_0(Consume, 1) : !aie.objectfifosubview<memref<1024xi32>>
         %3 = aie.objectfifo.subview.access %2[0] : !aie.objectfifosubview<memref<1024xi32>> -> memref<1024xi32>
         %c1024_i32 = arith.constant 1024 : i32
-        func.call @passThroughLine(%3, %1, %c1024_i32) : (memref<1024xi32>, memref<1024xi32>, i32) -> ()
+        %c2_i32 = arith.constant 2 : i32
+        func.call @passThroughLine(%3, %1, %c1024_i32, %c2_i32) : (memref<1024xi32>, memref<1024xi32>, i32, i32) -> ()
         aie.objectfifo.release @in1_0(Consume, 1)
         aie.objectfifo.release @out1_0(Produce, 1)
       }
@@ -115,7 +118,8 @@ module {
         %2 = aie.objectfifo.acquire @in1_1(Consume, 1) : !aie.objectfifosubview<memref<1024xi32>>
         %3 = aie.objectfifo.subview.access %2[0] : !aie.objectfifosubview<memref<1024xi32>> -> memref<1024xi32>
         %c1024_i32 = arith.constant 1024 : i32
-        func.call @passThroughLine(%3, %1, %c1024_i32) : (memref<1024xi32>, memref<1024xi32>, i32) -> ()
+        %c3_i32 = arith.constant 3 : i32
+        func.call @passThroughLine(%3, %1, %c1024_i32, %c3_i32) : (memref<1024xi32>, memref<1024xi32>, i32, i32) -> ()
         aie.objectfifo.release @in1_1(Consume, 1)
         aie.objectfifo.release @out1_1(Produce, 1)
       }
@@ -131,7 +135,8 @@ module {
         %2 = aie.objectfifo.acquire @in2_0(Consume, 1) : !aie.objectfifosubview<memref<1024xi32>>
         %3 = aie.objectfifo.subview.access %2[0] : !aie.objectfifosubview<memref<1024xi32>> -> memref<1024xi32>
         %c1024_i32 = arith.constant 1024 : i32
-        func.call @passThroughLine(%3, %1, %c1024_i32) : (memref<1024xi32>, memref<1024xi32>, i32) -> ()
+        %c4_i32 = arith.constant 4 : i32
+        func.call @passThroughLine(%3, %1, %c1024_i32, %c4_i32) : (memref<1024xi32>, memref<1024xi32>, i32, i32) -> ()
         aie.objectfifo.release @in2_0(Consume, 1)
         aie.objectfifo.release @out2_0(Produce, 1)
       }
@@ -147,7 +152,8 @@ module {
         %2 = aie.objectfifo.acquire @in2_1(Consume, 1) : !aie.objectfifosubview<memref<1024xi32>>
         %3 = aie.objectfifo.subview.access %2[0] : !aie.objectfifosubview<memref<1024xi32>> -> memref<1024xi32>
         %c1024_i32 = arith.constant 1024 : i32
-        func.call @passThroughLine(%3, %1, %c1024_i32) : (memref<1024xi32>, memref<1024xi32>, i32) -> ()
+        %c5_i32 = arith.constant 5 : i32
+        func.call @passThroughLine(%3, %1, %c1024_i32, %c5_i32) : (memref<1024xi32>, memref<1024xi32>, i32, i32) -> ()
         aie.objectfifo.release @in2_1(Consume, 1)
         aie.objectfifo.release @out2_1(Produce, 1)
       }
@@ -163,7 +169,8 @@ module {
         %2 = aie.objectfifo.acquire @in3_0(Consume, 1) : !aie.objectfifosubview<memref<1024xi32>>
         %3 = aie.objectfifo.subview.access %2[0] : !aie.objectfifosubview<memref<1024xi32>> -> memref<1024xi32>
         %c1024_i32 = arith.constant 1024 : i32
-        func.call @passThroughLine(%3, %1, %c1024_i32) : (memref<1024xi32>, memref<1024xi32>, i32) -> ()
+        %c6_i32 = arith.constant 6 : i32
+        func.call @passThroughLine(%3, %1, %c1024_i32, %c6_i32) : (memref<1024xi32>, memref<1024xi32>, i32, i32) -> ()
         aie.objectfifo.release @in3_0(Consume, 1)
         aie.objectfifo.release @out3_0(Produce, 1)
       }
@@ -179,7 +186,8 @@ module {
         %2 = aie.objectfifo.acquire @in3_1(Consume, 1) : !aie.objectfifosubview<memref<1024xi32>>
         %3 = aie.objectfifo.subview.access %2[0] : !aie.objectfifosubview<memref<1024xi32>> -> memref<1024xi32>
         %c1024_i32 = arith.constant 1024 : i32
-        func.call @passThroughLine(%3, %1, %c1024_i32) : (memref<1024xi32>, memref<1024xi32>, i32) -> ()
+        %c7_i32 = arith.constant 7 : i32
+        func.call @passThroughLine(%3, %1, %c1024_i32, %c7_i32) : (memref<1024xi32>, memref<1024xi32>, i32, i32) -> ()
         aie.objectfifo.release @in3_1(Consume, 1)
         aie.objectfifo.release @out3_1(Produce, 1)
       }
@@ -195,7 +203,8 @@ module {
         %2 = aie.objectfifo.acquire @in4_0(Consume, 1) : !aie.objectfifosubview<memref<1024xi32>>
         %3 = aie.objectfifo.subview.access %2[0] : !aie.objectfifosubview<memref<1024xi32>> -> memref<1024xi32>
         %c1024_i32 = arith.constant 1024 : i32
-        func.call @passThroughLine(%3, %1, %c1024_i32) : (memref<1024xi32>, memref<1024xi32>, i32) -> ()
+        %c8_i32 = arith.constant 8 : i32
+        func.call @passThroughLine(%3, %1, %c1024_i32, %c8_i32) : (memref<1024xi32>, memref<1024xi32>, i32, i32) -> ()
         aie.objectfifo.release @in4_0(Consume, 1)
         aie.objectfifo.release @out4_0(Produce, 1)
       }
@@ -211,7 +220,8 @@ module {
         %2 = aie.objectfifo.acquire @in4_1(Consume, 1) : !aie.objectfifosubview<memref<1024xi32>>
         %3 = aie.objectfifo.subview.access %2[0] : !aie.objectfifosubview<memref<1024xi32>> -> memref<1024xi32>
         %c1024_i32 = arith.constant 1024 : i32
-        func.call @passThroughLine(%3, %1, %c1024_i32) : (memref<1024xi32>, memref<1024xi32>, i32) -> ()
+        %c9_i32 = arith.constant 9 : i32
+        func.call @passThroughLine(%3, %1, %c1024_i32, %c9_i32) : (memref<1024xi32>, memref<1024xi32>, i32, i32) -> ()
         aie.objectfifo.release @in4_1(Consume, 1)
         aie.objectfifo.release @out4_1(Produce, 1)
       }
@@ -227,7 +237,8 @@ module {
         %2 = aie.objectfifo.acquire @in5_0(Consume, 1) : !aie.objectfifosubview<memref<1024xi32>>
         %3 = aie.objectfifo.subview.access %2[0] : !aie.objectfifosubview<memref<1024xi32>> -> memref<1024xi32>
         %c1024_i32 = arith.constant 1024 : i32
-        func.call @passThroughLine(%3, %1, %c1024_i32) : (memref<1024xi32>, memref<1024xi32>, i32) -> ()
+        %c10_i32 = arith.constant 10 : i32
+        func.call @passThroughLine(%3, %1, %c1024_i32, %c10_i32) : (memref<1024xi32>, memref<1024xi32>, i32, i32) -> ()
         aie.objectfifo.release @in5_0(Consume, 1)
         aie.objectfifo.release @out5_0(Produce, 1)
       }
@@ -243,7 +254,8 @@ module {
         %2 = aie.objectfifo.acquire @in5_1(Consume, 1) : !aie.objectfifosubview<memref<1024xi32>>
         %3 = aie.objectfifo.subview.access %2[0] : !aie.objectfifosubview<memref<1024xi32>> -> memref<1024xi32>
         %c1024_i32 = arith.constant 1024 : i32
-        func.call @passThroughLine(%3, %1, %c1024_i32) : (memref<1024xi32>, memref<1024xi32>, i32) -> ()
+        %c11_i32 = arith.constant 11 : i32
+        func.call @passThroughLine(%3, %1, %c1024_i32, %c11_i32) : (memref<1024xi32>, memref<1024xi32>, i32, i32) -> ()
         aie.objectfifo.release @in5_1(Consume, 1)
         aie.objectfifo.release @out5_1(Produce, 1)
       }
@@ -259,7 +271,8 @@ module {
         %2 = aie.objectfifo.acquire @in6_0(Consume, 1) : !aie.objectfifosubview<memref<1024xi32>>
         %3 = aie.objectfifo.subview.access %2[0] : !aie.objectfifosubview<memref<1024xi32>> -> memref<1024xi32>
         %c1024_i32 = arith.constant 1024 : i32
-        func.call @passThroughLine(%3, %1, %c1024_i32) : (memref<1024xi32>, memref<1024xi32>, i32) -> ()
+        %c12_i32 = arith.constant 12 : i32
+        func.call @passThroughLine(%3, %1, %c1024_i32, %c12_i32) : (memref<1024xi32>, memref<1024xi32>, i32, i32) -> ()
         aie.objectfifo.release @in6_0(Consume, 1)
         aie.objectfifo.release @out6_0(Produce, 1)
       }
@@ -275,7 +288,8 @@ module {
         %2 = aie.objectfifo.acquire @in6_1(Consume, 1) : !aie.objectfifosubview<memref<1024xi32>>
         %3 = aie.objectfifo.subview.access %2[0] : !aie.objectfifosubview<memref<1024xi32>> -> memref<1024xi32>
         %c1024_i32 = arith.constant 1024 : i32
-        func.call @passThroughLine(%3, %1, %c1024_i32) : (memref<1024xi32>, memref<1024xi32>, i32) -> ()
+        %c13_i32 = arith.constant 13 : i32
+        func.call @passThroughLine(%3, %1, %c1024_i32, %c13_i32) : (memref<1024xi32>, memref<1024xi32>, i32, i32) -> ()
         aie.objectfifo.release @in6_1(Consume, 1)
         aie.objectfifo.release @out6_1(Produce, 1)
       }
@@ -291,7 +305,8 @@ module {
         %2 = aie.objectfifo.acquire @in7_0(Consume, 1) : !aie.objectfifosubview<memref<1024xi32>>
         %3 = aie.objectfifo.subview.access %2[0] : !aie.objectfifosubview<memref<1024xi32>> -> memref<1024xi32>
         %c1024_i32 = arith.constant 1024 : i32
-        func.call @passThroughLine(%3, %1, %c1024_i32) : (memref<1024xi32>, memref<1024xi32>, i32) -> ()
+        %c14_i32 = arith.constant 14 : i32
+        func.call @passThroughLine(%3, %1, %c1024_i32, %c14_i32) : (memref<1024xi32>, memref<1024xi32>, i32, i32) -> ()
         aie.objectfifo.release @in7_0(Consume, 1)
         aie.objectfifo.release @out7_0(Produce, 1)
       }
@@ -307,7 +322,8 @@ module {
         %2 = aie.objectfifo.acquire @in7_1(Consume, 1) : !aie.objectfifosubview<memref<1024xi32>>
         %3 = aie.objectfifo.subview.access %2[0] : !aie.objectfifosubview<memref<1024xi32>> -> memref<1024xi32>
         %c1024_i32 = arith.constant 1024 : i32
-        func.call @passThroughLine(%3, %1, %c1024_i32) : (memref<1024xi32>, memref<1024xi32>, i32) -> ()
+        %c15_i32 = arith.constant 15 : i32
+        func.call @passThroughLine(%3, %1, %c1024_i32, %c15_i32) : (memref<1024xi32>, memref<1024xi32>, i32, i32) -> ()
         aie.objectfifo.release @in7_1(Consume, 1)
         aie.objectfifo.release @out7_1(Produce, 1)
       }
