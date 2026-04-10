@@ -25,7 +25,7 @@
 #include "xrt/experimental/xrt_ext.h"
 #include "xrt/experimental/xrt_module.h"
 
-#define N 1024
+#define N 16384
 
 int main(int argc, const char *argv[]) {
   // Start the XRT test code
@@ -50,26 +50,16 @@ int main(int argc, const char *argv[]) {
     srcVecA.push_back(i + 1);
   memcpy(bufInA, srcVecA.data(), (srcVecA.size() * sizeof(uint32_t)));
 
+  std::cout << "Running memsync kernel" << std::endl;
   bo_inA.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
   unsigned int opcode = 3;
   // Setup run to configure
+  std::cout << "Running setup kernel" << std::endl;
   auto cfg_run = kernel(opcode, 0, 0, bo_inA, bo_out);
   cfg_run.wait2();
-  auto start = std::chrono::high_resolution_clock::now();
-  // Test run
-  auto run = kernel(opcode, 0, 0, bo_inA, bo_out);
-  run.wait2();
-  auto stop = std::chrono::high_resolution_clock::now();
-  const float npu_time =
-      std::chrono::duration_cast<std::chrono::microseconds>(stop - start)
-          .count();
-
+  std::cout << "Kernel complete" << std::endl;
   bo_out.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-  std::cout << std::endl;
-  std::cout << "Latency (us): " << npu_time << std::endl;
-  std::cout << std::endl;
-
   uint32_t *bufOut = bo_out.map<uint32_t *>();
 
   int errors = 0;
