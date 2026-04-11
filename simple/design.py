@@ -6,6 +6,7 @@ from aie.iron import Kernel, ObjectFifo, Program, Runtime, Worker
 from aie.iron.placers import SequentialPlacer
 from aie.iron.device import Tile, NPU1, NPU2
 from aie.helpers.taplib.tap import TensorAccessPattern
+from aie.iron.controlflow import range_
 
 
 def my_memcpy(dev, size, num_columns, num_channels, bypass):
@@ -17,7 +18,10 @@ def my_memcpy(dev, size, num_columns, num_channels, bypass):
     xfr_dtype = np.int32
 
     # Define tensor types
-    line_size = int(size / 16)
+
+    elems_per_tile = 1024
+    splits = size // elems_per_tile
+    line_size = int(size / splits) // 16
     line_type = np.ndarray[(line_size,), np.dtype[xfr_dtype]]
     transfer_type = np.ndarray[(size,), np.dtype[xfr_dtype]]
 
@@ -47,16 +51,17 @@ def my_memcpy(dev, size, num_columns, num_channels, bypass):
     passthrough_fn = Kernel(
         "passThroughLine",
         "kernel.o",
-        [line_type, line_type, np.int32, np.int32],
+        [line_type, line_type, np.int32, np.int32, np.uint64],
     )
 
     # Task for the core to perform
     def core_fn(of_in, of_out, passThroughLine, node):
-        elemOut = of_out.acquire(1)
-        elemIn = of_in.acquire(1)
-        passThroughLine(elemIn, elemOut, line_size, node)
-        of_in.release(1)
-        of_out.release(1)
+        for i in range_(splits):
+          elemOut = of_out.acquire(1)
+          elemIn = of_in.acquire(1)
+          passThroughLine(elemIn, elemOut, line_size, node, i)
+          of_in.release(1)
+          of_out.release(1)
 
     # Create a worker to perform the task
     my_workers = [
