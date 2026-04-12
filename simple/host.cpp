@@ -25,7 +25,7 @@
 #include "xrt/experimental/xrt_ext.h"
 #include "xrt/experimental/xrt_module.h"
 
-#define N 128*128
+#define N 1024*1024
 
 int main(int argc, const char *argv[]) {
   // Start the XRT test code

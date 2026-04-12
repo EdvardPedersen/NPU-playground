@@ -9,10 +9,12 @@ from aie.helpers.taplib.tap import TensorAccessPattern
 from aie.iron.controlflow import range_
 
 
-def my_memcpy(dev, size, num_columns, num_channels, bypass):
+def my_memcpy(dev, image_width, image_height, num_columns, num_channels, bypass):
     # --------------------------------------------------------------------------
     # Configuration
     # --------------------------------------------------------------------------
+
+    size = image_width * image_height
 
     # Use int32 dtype as it is the addr generation granularity
     xfr_dtype = np.int32
@@ -20,13 +22,13 @@ def my_memcpy(dev, size, num_columns, num_channels, bypass):
     # Define tensor types
 
     elems_per_tile = 1024
-    splits = size // elems_per_tile
-    line_size = int(size / splits) // 16
+    line_size = elems_per_tile  #int(size / splits) // 16
     line_type = np.ndarray[(line_size,), np.dtype[xfr_dtype]]
     transfer_type = np.ndarray[(size,), np.dtype[xfr_dtype]]
 
     # Chunk size sent per DMA channel
     chunk = size // num_columns // num_channels
+    splits = chunk // elems_per_tile
 
     # --------------------------------------------------------------------------
     # In-Array Data Movement
@@ -51,7 +53,7 @@ def my_memcpy(dev, size, num_columns, num_channels, bypass):
     passthrough_fn = Kernel(
         "passThroughLine",
         "kernel.o",
-        [line_type, line_type, np.int32, np.int32, np.uint64],
+        [line_type, line_type, np.int32, np.int32, np.uint64, np.int32, np.int32, np.int32],
     )
 
     # Task for the core to perform
@@ -59,7 +61,7 @@ def my_memcpy(dev, size, num_columns, num_channels, bypass):
         for i in range_(splits):
           elemOut = of_out.acquire(1)
           elemIn = of_in.acquire(1)
-          passThroughLine(elemIn, elemOut, line_size, node, i)
+          passThroughLine(elemIn, elemOut, line_size, node, i, splits, image_width, image_height)
           of_in.release(1)
           of_out.release(1)
 
@@ -126,4 +128,4 @@ def my_memcpy(dev, size, num_columns, num_channels, bypass):
 
 ## Call the my_memcpy function with the parsed arguments
 ## and print the MLIR as a result
-print(my_memcpy(NPU2(), 128*128 , 8, 2, False))
+print(my_memcpy(NPU2(), 1024, 1024 , 8, 2, False))
