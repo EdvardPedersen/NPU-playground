@@ -17,6 +17,8 @@
 #include <string>
 #include <vector>
 
+#include <chrono>
+
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
@@ -25,7 +27,11 @@
 #include "xrt/experimental/xrt_ext.h"
 #include "xrt/experimental/xrt_module.h"
 
-#define N 1024*1024
+#include <SDL3/SDL.h>
+
+#define WIDTH 1024
+#define HEIGHT 1024
+#define N WIDTH*HEIGHT
 
 int main(int argc, const char *argv[]) {
   // Start the XRT test code
@@ -55,21 +61,44 @@ int main(int argc, const char *argv[]) {
 
   unsigned int opcode = 3;
   // Setup run to configure
+
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   std::cout << "Running setup kernel" << std::endl;
   auto cfg_run = kernel(opcode, 0, 0, bo_inA, bo_out);
   cfg_run.wait2();
-  std::cout << "Kernel complete" << std::endl;
   bo_out.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+  auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+
+  std::cout << "Time difference = " << millis << "[ms]" << std::endl;
   uint32_t *bufOut = bo_out.map<uint32_t *>();
 
   int errors = 0;
 
   for (uint32_t i = 0; i < N; i++) {
     uint32_t ref = i;
-    std::cout << bufOut[i] << " - " << ref << std::endl;
     if (*(bufOut + i) != ref) {
       errors++;
     }
+  }
+
+  SDL_Init(SDL_INIT_VIDEO);
+  SDL_Window *window;
+  SDL_Renderer *renderer;
+  SDL_CreateWindowAndRenderer("Mandelbrot example", WIDTH, HEIGHT, SDL_WINDOW_RESIZABLE, &window, &renderer);
+
+  SDL_Surface *output = SDL_CreateSurfaceFrom(WIDTH, HEIGHT, SDL_PIXELFORMAT_RGBA8888, bufOut, WIDTH * sizeof(int32_t));
+  SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, output);
+
+  while(true) {
+    SDL_Event ev;
+    while(SDL_PollEvent(&ev)) {
+        if(ev.type == SDL_EVENT_KEY_DOWN) return 0;
+    }
+
+    SDL_RenderTexture(renderer, tex, NULL, NULL);
+    SDL_RenderPresent(renderer);
   }
 
   if (!errors) {

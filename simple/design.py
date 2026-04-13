@@ -53,7 +53,7 @@ def my_memcpy(dev, image_width, image_height, num_columns, num_channels, bypass)
     passthrough_fn = Kernel(
         "passThroughLine",
         "kernel.o",
-        [line_type, line_type, np.int32, np.int32, np.uint64, np.int32, np.int32, np.int32],
+        [line_type, line_type, np.int32, np.int32, np.uint64, np.int32, np.int32, np.int32, np.float32],
     )
 
     # Task for the core to perform
@@ -61,7 +61,7 @@ def my_memcpy(dev, image_width, image_height, num_columns, num_channels, bypass)
         for i in range_(splits):
           elemOut = of_out.acquire(1)
           elemIn = of_in.acquire(1)
-          passThroughLine(elemIn, elemOut, line_size, node, i, splits, image_width, image_height)
+          passThroughLine(elemIn, elemOut, line_size, node, i, splits, image_width, image_height, 1.0)
           of_in.release(1)
           of_out.release(1)
 

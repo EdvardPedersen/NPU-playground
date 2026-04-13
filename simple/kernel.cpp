@@ -1,30 +1,56 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include <aie_api/aie.hpp>
 
 extern "C" {
+
+#define VEC_WIDTH 32
 
 void passThroughLine(int32_t *in, int32_t *out, int32_t lineWidth, int32_t node, uint64_t split, int32_t nodeWidth, int32_t image_width, int32_t image_height, float stage) {
     int32_t *inPtr = in;
     int32_t *outPtr = out;
-    int32_t start = lineWidth * nodeWidth * node + (lineWidth * split);
+    uint32_t start = (uint16)lineWidth * (uint16)nodeWidth * (uint16)node + ((uint16)lineWidth * (uint16)split);
 
-    for(int i = 0; i < lineWidth; i++) {
-        int32_t total = i + start;
-        float x = (total % image_width) / (float)image_width;
-        float y = (total / image_width) / (float)image_height;
+    for(uint16 i = 0; i < lineWidth; i++) {
+        aie::vector<uint32, VEC_WIDTH> starts;
+        aie::vector<uint32, VEC_WIDTH> mods;
+        aie::vector<uint32, VEC_WIDTH> divs;
+        for(int x = 0; x < VEC_WIDTH; x++) {
+            starts[x] = i + start;
+            mods[x] = starts[x] % image_width;
+            divs[x] = starts[x] / image_width;
+        }
+        uint32_t total = i + start;
+        uint32_t mod = starts[0] % image_width;
+        uint32_t div = starts[0] / image_width;
+
+        auto xes =  aie::to_float(mods, 0);
+        auto real_xes = aie::div(xes, (float)image_width);
+
+        auto yes = aie::to_float(div, 0);
+        auto real_yes = aie::div(yes, (float)image_height);
+
+        aie::vector<bfloat16, VEC_WIDTH> yesyes;
+        yesyes = aie::to_vector<float>(real_yes);
+
+        float x = mod / (float)image_width;
+        float y = div / (float)image_height;
         float y0 = y * 2.24 * stage - 1.12 * stage;
         float x0 = x * 2.47 * stage - 2 * stage;
 
-        float xf = 0;
-        float yf = 0;
+        bfloat16 sy0 = y0;
+        bfloat16 sx0 = x0;
+
+        bfloat16 xf = 0;
+        bfloat16 yf = 0;
         uint8_t iter = 0;
         while(iter < 255 and xf * xf + yf * yf < 4) {
-            float xtemp = xf*xf - yf * yf + x0;
-            yf = 2 * xf * yf + y0;
+            bfloat16 xtemp = xf*xf - yf * yf + sx0;
+            yf = 2 * xf * yf + sy0;
             xf = xtemp;
             iter += 1;
         }
-        *outPtr++ = iter;
+        *outPtr++ = iter << 8 | 0xff;
     }
 }
 
