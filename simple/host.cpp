@@ -99,6 +99,7 @@ int main(int argc, const char *argv[]) {
 
     SDL_RenderTexture(renderer, tex, NULL, NULL);
     SDL_RenderPresent(renderer);
+    SDL_Delay(16);
   }
 
   if (!errors) {
