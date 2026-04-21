@@ -29,8 +29,8 @@
 
 #include <SDL3/SDL.h>
 
-#define WIDTH 1024
-#define HEIGHT 1024
+#define WIDTH 128
+#define HEIGHT 128
 #define N WIDTH*HEIGHT
 
 int main(int argc, const char *argv[]) {

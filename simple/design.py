@@ -128,4 +128,4 @@ def my_memcpy(dev, image_width, image_height, num_columns, num_channels, bypass)
 
 ## Call the my_memcpy function with the parsed arguments
 ## and print the MLIR as a result
-print(my_memcpy(NPU2(), 1024, 1024 , 8, 2, False))
+print(my_memcpy(NPU2(), 128, 128 , 8, 2, False))

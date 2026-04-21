@@ -7,47 +7,40 @@ extern "C" {
 #define VEC_WIDTH 16
 #define FLOAT_TYPE float
 
-void passThroughLine(int32_t *in, int32_t *out, int32_t lineWidth, int32_t node, uint64_t split, int32_t nodeWidth, int32_t image_width, int32_t image_height, float stage) {
+void passThroughLine(int32_t * __restrict in, int32_t * __restrict out, int32_t lineWidth, int32_t node, uint64_t split, int32_t nodeWidth, int32_t image_width, int32_t image_height, float stage) {
     int32_t *inPtr = in;
     int32_t *outPtr = out;
     uint32_t start = lineWidth * nodeWidth * node + (lineWidth * split);
 
-    for(uint16 i = 0; i < lineWidth; i += VEC_WIDTH) {
-        aie::vector<uint32, VEC_WIDTH> starts;
-        FLOAT_TYPE real_xes[VEC_WIDTH];
-        FLOAT_TYPE real_yes[VEC_WIDTH];
+    for(uint16 i = 0; i < lineWidth; i += VEC_WIDTH) chess_prepare_for_pipelining chess_loop_range(1024/16, 1024/16) {
+        aie::vector<FLOAT_TYPE, VEC_WIDTH> x0s;
+        aie::vector<FLOAT_TYPE, VEC_WIDTH> y0s;
         for(int x = 0; x < VEC_WIDTH; x++) {
-            starts[x] = (i + start + x);
-            real_xes[x] = (FLOAT_TYPE)((starts[x] % image_width) / (FLOAT_TYPE)image_width);
-            real_yes[x] = (FLOAT_TYPE)((starts[x] / image_width) / (FLOAT_TYPE)image_height);
+            uint32 s = (i + start + x);
+            x0s[x] = (FLOAT_TYPE)((((s % image_width) / (FLOAT_TYPE)image_width) * 2.24) - (2));
+            y0s[x] = (FLOAT_TYPE)((((s / image_width) / (FLOAT_TYPE)image_height) * 2.47) - (1.12));
         }
 
-        FLOAT_TYPE y0s[VEC_WIDTH] = {0};
-        FLOAT_TYPE x0s[VEC_WIDTH] = {0};
-        for(int x = 0; x < VEC_WIDTH; x++) {
-            y0s[x] = (real_yes[x] * 2.24) - (1.12);
-            x0s[x] = (real_xes[x] * 2.47) - (2);
-        }
-
-
-        uint16 iters[VEC_WIDTH] = {0};
-        FLOAT_TYPE xf[VEC_WIDTH] = {0};
-        FLOAT_TYPE yf[VEC_WIDTH] = {0};
-        for(uint16 x = 0; x < 255; x++) {
+        aie::vector<uint32, VEC_WIDTH> iters = aie::zeros<uint32, VEC_WIDTH>();
+        aie::vector<FLOAT_TYPE, VEC_WIDTH> xf = aie::zeros<FLOAT_TYPE, VEC_WIDTH>();
+        aie::vector<FLOAT_TYPE, VEC_WIDTH> yf = aie::zeros<FLOAT_TYPE, VEC_WIDTH>();
+        for(uint16 x = 0; x < 63; x++) chess_prepare_for_pipelining chess_loop_range(1, 255) {
+            auto xsq = aie::to_vector<FLOAT_TYPE>(aie::mul<accfloat>(xf, xf)); // Uncomment this = corrupt image, infinite loop if uncommenting other xsq use
+            //auto ysq = aie::to_vector<FLOAT_TYPE>(aie::mul<accfloat>(yf, yf)); // Uncomment this = corrupt image, infinite loop if uncommenting other xsq use
+            aie::vector<FLOAT_TYPE, VEC_WIDTH> ysq = aie::zeros<FLOAT_TYPE, VEC_WIDTH>();
             for(int y = 0; y < VEC_WIDTH; y++) {
-                FLOAT_TYPE xftemp = xf[y]*xf[y] - yf[y]*yf[y] + x0s[y];
+                //xsq[y] = xf[y] * xf[y];
+                //ysq[y] = yf[y] * yf[y];
                 yf[y] = xf[y] * 2 * yf[y] + y0s[y];
-                xf[y] = xftemp;
-                FLOAT_TYPE xsq = xf[y] * xf[y];
-                FLOAT_TYPE ysq = yf[y] * yf[y];
-                FLOAT_TYPE sumsq = xsq + ysq;
-                if(sumsq < 4.0) iters[y] += 1;
+                xf[y] = xsq[y] - ysq[y] + x0s[y];
+                if(xsq[y] + ysq[y] < 4.0) iters[y] = iters[y] + 1;
             }
         }
-        for(uint16 x = 0; x < VEC_WIDTH; x++) {
-            //uint16 lol = starts[x] % 255;
-            *outPtr++ =  (uint32_t)(iters[x] << 8)  | 0xff;
-        }
+
+        iters = aie::upshift(iters, 10);
+        iters = aie::bit_or((uint32)0xff, iters);
+        aie::store_v((uint32 *)outPtr, iters);
+        outPtr += VEC_WIDTH;
 }
 }
 
