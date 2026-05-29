@@ -8,123 +8,112 @@ from aie.helpers.taplib.tap import TensorAccessPattern
 from aie.iron.controlflow import range_
 
 
-def my_memcpy(dev, image_width, image_height, num_columns, num_channels, bypass):
-    # --------------------------------------------------------------------------
-    # Configuration
-    # --------------------------------------------------------------------------
-
+def my_memcpy(dev, image_width, image_height, num_columns, bypass):
     size = image_width * image_height
 
-    # Use int32 dtype as it is the addr generation granularity
     xfr_dtype = np.int32
-
-    # Define tensor types
-
-    elems_per_tile = 1024
-    line_size = elems_per_tile  #int(size / splits) // 16
-    line_type = np.ndarray[(line_size,), np.dtype[xfr_dtype]]
     transfer_type = np.ndarray[(size,), np.dtype[xfr_dtype]]
 
-    # Chunk size sent per DMA channel
-    chunk = size // num_columns // num_channels
-    splits = chunk // elems_per_tile
+    cores_per_col = 4
+    tile_size = 256
+    col_tile_size = tile_size * cores_per_col  # 1024
 
-    # --------------------------------------------------------------------------
-    # In-Array Data Movement
-    # --------------------------------------------------------------------------
+    chunk_per_col = size // num_columns
+    chunk_per_core = chunk_per_col // cores_per_col
+    splits = chunk_per_core // tile_size
 
-    of_ins = [
-        ObjectFifo(line_type, name=f"in{i}_{j}")
-        for i in range(num_columns)
-        for j in range(num_channels)
-    ]
-    of_outs = [
-        ObjectFifo(line_type, name=f"out{i}_{j}")
-        for i in range(num_columns)
-        for j in range(num_channels)
-    ]
+    col_type = np.ndarray[(col_tile_size,), np.dtype[xfr_dtype]]
+    core_type = np.ndarray[(tile_size,), np.dtype[xfr_dtype]]
 
-    # --------------------------------------------------------------------------
-    # Task core will run
-    # --------------------------------------------------------------------------
+    of_ins = []
+    of_outs = []
 
-    # External, binary kernel definition
+    for i in range(num_columns):
+        of_in = ObjectFifo(col_type, name=f"in_col_{i}")
+        of_out = ObjectFifo(col_type, name=f"out_col_{i}")
+
+        core_offsets = [j * tile_size for j in range(cores_per_col)]
+        core_in_fifos = of_in.cons().split(
+            core_offsets,
+            obj_types=[core_type] * cores_per_col,
+            names=[f"in_core_{i}_{j}" for j in range(cores_per_col)],
+        )
+        core_out_fifos = of_out.prod().join(
+            core_offsets,
+            obj_types=[core_type] * cores_per_col,
+            names=[f"out_core_{i}_{j}" for j in range(cores_per_col)],
+        )
+
+        of_ins.append((of_in, core_in_fifos))
+        of_outs.append((of_out, core_out_fifos))
+
     passthrough_fn = Kernel(
         "passThroughLine",
         "kernel.o",
-        [line_type, line_type, np.int32, np.int32, np.uint64, np.int32, np.int32, np.int32, np.float32],
+        [core_type, core_type, np.int32, np.int32, np.uint64, np.int32, np.int32, np.int32, np.float32],
     )
 
-    # Task for the core to perform
     def core_fn(of_in, of_out, passThroughLine, node):
-        for i in range_(splits):
-          elemOut = of_out.acquire(1)
-          elemIn = of_in.acquire(1)
-          passThroughLine(elemIn, elemOut, line_size, node, i, splits, image_width, image_height, 1.0)
-          of_in.release(1)
-          of_out.release(1)
+        col = node // cores_per_col
+        row = node % cores_per_col
+        for it in range_(splits):
+            elemOut = of_out.acquire(1)
+            elemIn = of_in.acquire(1)
+            global_start = col * chunk_per_col + it * col_tile_size + row * tile_size
+            passThroughLine(elemIn, elemOut, tile_size, 0, global_start // tile_size, 1, image_width, image_height, 1.0)
+            of_in.release(1)
+            of_out.release(1)
 
-    # Create a worker to perform the task
     my_workers = [
         Worker(
             core_fn,
             [
-                of_ins[i * num_channels + j].cons(),
-                of_outs[i * num_channels + j].prod(),
+                of_ins[i][1][j].cons(),
+                of_outs[i][1][j].prod(),
                 passthrough_fn,
-                i * num_channels + j,
+                i * cores_per_col + j,
             ],
         )
         for i in range(num_columns)
-        for j in range(num_channels)
+        for j in range(cores_per_col)
     ]
 
-    # --------------------------------------------------------------------------
-    # DRAM-NPU data movement and work dispatch
-    # --------------------------------------------------------------------------
-
-    # Create a TensorAccessPattern for each channel to describe the data movement.
-    # The pattern chops the data in equal chunks and moves them in parallel across
-    # the columns and channels.
-    taps = [
+    taps_in = [
         TensorAccessPattern(
             (1, size),
-            chunk * i * num_channels + chunk * j,
-            [1, 1, 1, chunk],
+            i * chunk_per_col,
+            [1, 1, 1, chunk_per_col],
             [0, 0, 0, 1],
         )
         for i in range(num_columns)
-        for j in range(num_channels)
+    ]
+    taps_out = [
+        TensorAccessPattern(
+            (1, size),
+            i * chunk_per_col,
+            [1, 1, 1, chunk_per_col],
+            [0, 0, 0, 1],
+        )
+        for i in range(num_columns)
     ]
 
-    # Runtime operations to move data to/from the AIE-array
-    # START EXERCISE: Modify the code below to use task groups
     rt = Runtime()
     with rt.sequence(transfer_type, transfer_type) as (a_in, b_out):
-        # Start the workers if not bypass
         rt.start(*my_workers)
-        # Fill the input objectFIFOs with data
         for i in range(num_columns):
-            for j in range(num_channels):
-                rt.fill(
-                    of_ins[i * num_channels + j].prod(),
-                    a_in,
-                    taps[i * num_channels + j],
-                )
-        # Drain the output objectFIFOs with data
+            rt.fill(
+                of_ins[i][0].prod(),
+                a_in,
+                taps_in[i],
+            )
         for i in range(num_columns):
-            for j in range(num_channels):
-                rt.drain(
-                    of_outs[i * num_channels + j].cons(),
-                    b_out,
-                    taps[i * num_channels + j],
-                    wait=True,  # wait for the transfer to complete and data to be available
-                )
-    # END EXERCISE
+            rt.drain(
+                of_outs[i][0].cons(),
+                b_out,
+                taps_out[i],
+                wait=True,
+            )
 
-    # Place components (assign them resources on the device) and generate an MLIR module
     return Program(dev, rt).resolve_program()
 
-## Call the my_memcpy function with the parsed arguments
-## and print the MLIR as a result
-print(my_memcpy(NPU2(), 1024, 1024 , 8, 2, False))
+print(my_memcpy(NPU2(), 1024, 1024, 8, False))

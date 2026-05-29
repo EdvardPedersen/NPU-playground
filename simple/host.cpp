@@ -62,14 +62,18 @@ int main(int argc, const char *argv[]) {
   unsigned int opcode = 3;
   // Setup run to configure
 
-  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-  std::cout << "Running setup kernel" << std::endl;
   auto cfg_run = kernel(opcode, 0, 0, bo_inA, bo_out);
   cfg_run.wait2();
   bo_out.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+  std::cout << "Running setup kernel" << std::endl;
+  auto run = kernel(opcode, 0, 0, bo_inA, bo_out);
+  run.wait2();
+  bo_out.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
-  auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+  auto millis = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
 
   std::cout << "Time difference = " << millis << "[ms]" << std::endl;
   uint32_t *bufOut = bo_out.map<uint32_t *>();
