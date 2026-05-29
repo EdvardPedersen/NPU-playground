@@ -3,8 +3,7 @@ import argparse
 import sys
 
 from aie.iron import Kernel, ObjectFifo, Program, Runtime, Worker
-from aie.iron.placers import SequentialPlacer
-from aie.iron.device import Tile, NPU1, NPU2
+from aie.iron.device import NPU1, NPU2
 from aie.helpers.taplib.tap import TensorAccessPattern
 from aie.iron.controlflow import range_
 
@@ -124,7 +123,7 @@ def my_memcpy(dev, image_width, image_height, num_columns, num_channels, bypass)
     # END EXERCISE
 
     # Place components (assign them resources on the device) and generate an MLIR module
-    return Program(dev, rt).resolve_program(SequentialPlacer())
+    return Program(dev, rt).resolve_program()
 
 ## Call the my_memcpy function with the parsed arguments
 ## and print the MLIR as a result
