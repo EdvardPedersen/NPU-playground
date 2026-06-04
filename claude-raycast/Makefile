@@ -7,7 +7,7 @@ AIECC=/home/edvard/work/mlir-aie/ironenv/lib/python3.13/site-packages/mlir_aie/b
 
 all: device.xclbin host
 
-kernel.o: kernel.cpp Makefile
+kernel.o: kernel.cpp map_data.inc tex_data.h Makefile
 	$(PEANO) kernel.cpp -o kernel.o
 
 device.mlir: design.py Makefile
@@ -19,8 +19,8 @@ device_placed.mlir: device.mlir Makefile
 device.xclbin: device_placed.mlir kernel.o Makefile
 	$(AIECC) -v --link --aie-generate-elf --elf-name=insts.elf --aie-generate-xclbin --xclbin-name=device.xclbin device_placed.mlir
 
-host: host.cpp Makefile
-	$(CPP) host.cpp -lSDL3 -lxrt_coreutil -lGL -o host -O2
+host: host.cpp shaders.h tex_data.h map_data.inc glad/src/gl.c Makefile
+	$(CPP) host.cpp glad/src/gl.c -Iglad/include -lSDL3 -lxrt_coreutil -lGL -o host -O2
 
 run: host device.xclbin
 	./host

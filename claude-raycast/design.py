@@ -8,7 +8,7 @@ from aie.helpers.taplib.tap import TensorAccessPattern
 from aie.iron.controlflow import range_
 
 
-def my_memcpy(dev, image_width, image_height, num_columns, bypass):
+def my_memcpy(dev, image_width, image_height, num_columns):
     size = image_width * image_height
 
     xfr_dtype = np.int32
@@ -50,7 +50,7 @@ def my_memcpy(dev, image_width, image_height, num_columns, bypass):
     raycast_fn = Kernel(
         "raycastLine",
         "kernel.o",
-        [core_type, core_type, np.int32, np.int32, np.uint64, np.int32, np.int32, np.int32, np.float32],
+        [core_type, core_type, np.uint64],
     )
 
     def core_fn(of_in, of_out, raycastLine, node):
@@ -60,7 +60,7 @@ def my_memcpy(dev, image_width, image_height, num_columns, bypass):
             elemOut = of_out.acquire(1)
             elemIn = of_in.acquire(1)
             global_start = col * chunk_per_col + it * col_tile_size + row * tile_size
-            raycastLine(elemIn, elemOut, tile_size, 0, global_start // tile_size, 1, image_width, image_height, 1.0)
+            raycastLine(elemIn, elemOut, global_start // tile_size)
             of_in.release(1)
             of_out.release(1)
 
@@ -121,4 +121,4 @@ def my_memcpy(dev, image_width, image_height, num_columns, bypass):
 
     return Program(dev, rt).resolve_program()
 
-print(my_memcpy(NPU2(), 1024, 1024, 8, False))
+print(my_memcpy(NPU2(), 1024, 1024, 8))
