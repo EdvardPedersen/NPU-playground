@@ -1,0 +1,24 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Places the trees (terrain_trees.glsl), one thread per cell over the map, and
+// appends the visible ones to the instance list of the indirect tree draw.
+layout(local_size_x = 16, local_size_y = 16) in;
+
+#include "terrain_pc.glsl"
+#include "terrain_hmap.glsl"
+#include "terrain_trees.glsl"
+
+layout(std430, binding = 1) writeonly buffer Trees { vec4 trees[]; };
+layout(std430, binding = 2) buffer Draw { uint vertex_count, instance_count, first_vertex, first_instance; } draw;
+
+void main() {
+    vec4 tree;
+    if (!tree_at(ivec2(gl_GlobalInvocationID.xy) + pc.tree_cell, tree))
+        return;
+    // bounding sphere against the frustum (clip x and y scale world units by < 2.2)
+    float r = tree.w;
+    vec4 c = pc.viewProj * vec4(tree.xyz + vec3(0.0, 0.5 * tree.w, 0.0), 1.0);
+    if (c.w < -r || c.w > pc.eye.w + r || abs(c.x) > c.w + 2.2 * r || abs(c.y) > c.w + 2.2 * r)
+        return;
+    trees[atomicAdd(draw.instance_count, 1u)] = tree;
+}

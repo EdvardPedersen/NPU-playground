@@ -1,0 +1,39 @@
+#version 450
+// GPU version of the NPU Perlin generator (kernel.cpp), same spec: see perlin_params.h.
+// Integer lattice and hash, fp32 interpolation.
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(std430, binding = 0) writeonly buffer Out { uint px[]; };
+layout(push_constant) uniform PC { int t, s, h, octaves; } pc;
+
+const int W = 4096; // PERLIN_W
+
+int hash(int hx, int hy) { int v = hx + hy; return (v ^ (v >> 8)) & 255; }
+
+// Improved-Perlin gradient for h & 15, dotted with (x, y)
+float grad(int h, float x, float y) {
+    h &= 15;
+    float u = h < 8 ? x : y;
+    float v = h < 4 ? y : ((h & 13) == 12 ? x : 0.0);
+    return ((h & 1) != 0 ? -u : u) + ((h & 2) != 0 ? -v : v);
+}
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    int t = pc.t, s = pc.s;
+    float amp = 0.5, n = 0.0; // gradients are halved via amp
+    for (int o = 0; o < pc.octaves; o++) {
+        ivec2 f = t + p * s;
+        ivec2 c0 = (f >> 12) & 255, c1 = (c0 + 1) & 255;
+        vec2 d0 = vec2(f & 4095) * (1.0 / 4096.0), d1 = d0 - 1.0;
+        vec2 w = d0 * d0 * (3.0 - 2.0 * d0);
+        int hx0 = c0.x * 13, hx1 = c1.x * 13, hy0 = c0.y * 7, hy1 = c1.y * 7;
+        float n0 = mix(grad(hash(hx0, hy0), d0.x, d0.y), grad(hash(hx1, hy0), d1.x, d0.y), w.x);
+        float n1 = mix(grad(hash(hx0, hy1), d0.x, d1.y), grad(hash(hx1, hy1), d1.x, d1.y), w.x);
+        n += amp * mix(n0, n1, w.y);
+        t = (2 * t + 0x9E37) & 0xFFFFF; // perlin_next_octave
+        s = (2 * s + 1) & 0xFFFFF;
+        amp *= 0.5;
+    }
+    int c = clamp(int(floor((n * float(pc.h) * (1.0 / 4096.0) + 0.5) * 256.0)), 0, 255);
+    px[p.y * W + p.x] = 0xFF000000u | uint(c) * 0x010101u;
+}
